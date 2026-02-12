@@ -1,14 +1,18 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 Base = declarative_base()
+
 
 class DatabaseManager:
     def __init__(self, database_url: str):
         self.engine = create_engine(database_url, pool_pre_ping=True)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=self.engine
+        )
 
     @contextmanager
     def db_session(self) -> Generator[Session, None, None]:
@@ -29,7 +33,8 @@ class DatabaseManager:
         finally:
             session.close()
 
-# Keep get_db as a standalone for simpler cases if needed, 
+
+# Keep get_db as a standalone for simpler cases if needed,
 # but DatabaseManager is the main interface.
 def get_db(database_url: str):
     db_manager = DatabaseManager(database_url)
