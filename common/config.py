@@ -9,6 +9,9 @@ project's .env. After updating lilith-core, run `uv sync` in each project so
 the subclass picks up new base fields.
 """
 
+from functools import lru_cache
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Keys that must exist on BaseAgentSettings; used by projects to fail fast if core is stale
@@ -30,9 +33,20 @@ class BaseAgentSettings(BaseSettings):
     VLLM_MODEL: str = "Qwen3-8B-AWQ"
     SPACY_API_URL: str = ""
     FASTTEXT_LANGDETECT_URL: str = ""
+    LILITH_SCORE_CALIBRATION_PATH: str = ".lilith_score_calibration.json"
+    LILITH_SCORE_WINDOW_SIZE: int = 5000
+    LILITH_SCORE_DRIFT_Z: float = 1.5
+    LILITH_SCORE_RECENCY_HALF_LIFE_DAYS: float = 180.0
+    LILITH_ENABLE_LEARNED_RANKING: bool = False
+    LILITH_SOURCE_RELIABILITY_PRIORS: dict[str, float] = Field(default_factory=dict)
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+
+@lru_cache
+def get_base_settings() -> BaseAgentSettings:
+    return BaseAgentSettings()

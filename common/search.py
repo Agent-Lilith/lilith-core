@@ -2,6 +2,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
+from common.ranking import MCPScoreRanker
+
 T = TypeVar("T")
 
 
@@ -11,6 +13,7 @@ class BaseHybridSearchEngine(ABC, Generic[T]):
     def __init__(self, db: Any, embedder: Any = None):
         self.db = db
         self.embedder = embedder
+        self._ranker = MCPScoreRanker()
 
     @abstractmethod
     def _get_item_id(self, item: T) -> Any:
@@ -112,16 +115,13 @@ class BaseHybridSearchEngine(ABC, Generic[T]):
             timing["vector"] = round((time.monotonic() - t0) * 1000, 1)
 
         # 4. Fusion & Format
-        fusion_results = []
+        fusion_results: list[dict[str, Any]] = []
         for res in all_results.values():
-            # Use max score for now
-            final_score = max(res["scores"].values())
             formatted = self._format_result(res["item"], res["scores"], res["methods"])
-            fusion_results.append((formatted, final_score))
-
-        # Sort by score descending
-        fusion_results.sort(key=lambda x: x[1], reverse=True)
-        results = [x[0] for x in fusion_results[:top_k]]
+            fusion_results.append(formatted)
+        t_fusion = time.monotonic()
+        results = self._ranker.rank_results(fusion_results, top_k=top_k)
+        timing["fusion"] = round((time.monotonic() - t_fusion) * 1000, 1)
 
         timing["total"] = round((time.monotonic() - t_start) * 1000, 1)
         return results, timing, methods_executed
